@@ -9,6 +9,12 @@ figures — fully containerized, so it runs anywhere the same way.
 一条从原始测序 reads 到差异表达表格与发表级图表的完整、可复现的
 Nextflow + Docker 流水线，全程容器化，任何机器上跑出来的结果都一致。
 
+> ✅ **经过验证**：差异表达核心（DESeq2）已在**真实公开数据（GSE52778）**上跑通，
+> 9/11 个已知地塞米松响应基因全部正确判为显著上调（生物学金标准验证），
+> 并在合成数据上达到灵敏度 1.0 / 0 假阳性。详见
+> [`docs/airway_realdata_validation.md`](docs/airway_realdata_validation.md) 与
+> [`docs/local_deseq2_verification.md`](docs/local_deseq2_verification.md)。
+
 ---
 
 ## 目录 / Table of contents
@@ -21,6 +27,7 @@ Nextflow + Docker 流水线，全程容器化，任何机器上跑出来的结�
 - [参数说明 Parameters](#-参数说明-parameters)
 - [结果解读 Interpreting results](#-结果解读-interpreting-results)
 - [复现性 Reproducibility](#-复现性-reproducibility)
+- [验证 Validation](#-验证-validation)
 - [目录结构 Repository layout](#-目录结构-repository-layout)
 - [常见问题 Troubleshooting](#-常见问题-troubleshooting)
 - [许可 License](#-许可-license)
@@ -247,6 +254,27 @@ nextflow run main.nf --genome_fasta refs/genome.fa --gtf refs/genes.gtf \
 4. **`-resume`**：Nextflow 支持从任意失败步骤断点续跑，不重复计算。
 
 > 建议在论文方法部分引用：本流水线基于 Nextflow DSL2 构建，工具版本见各模块。
+
+---
+
+## ✅ 验证 Validation
+
+流水线的分析核心经过**双重验证**，不是"能跑"的样板：
+
+1. **真实数据 + 生物学金标准**：在公开数据集 GSE52778（Himes 2014）上跑 DESeq2，
+   9/11 个已知地塞米松响应基因全部正确判为显著上调。
+   详见 [`docs/airway_realdata_validation.md`](docs/airway_realdata_validation.md)。
+
+2. **合成数据 + 地面真值**：在带已知差异基因的模拟数据上，达到
+   灵敏度 1.000 / 假阳性 0 / 漏检 0 / 方向一致率 100%。
+   详见 [`docs/local_deseq2_verification.md`](docs/local_deseq2_verification.md)。
+
+   ```bash
+   Rscript scripts/setup_r_local.R              # 装本地 R 环境（无需 Docker）
+   Rscript scripts/make_synthetic_counts.R test/counts   # 带真值的合成数据
+   Rscript scripts/make_airway_counts.R data/airway_counts # 真实公开数据
+   Rscript bin/deseq2.R --outdir data/airway_results --counts data/airway_counts --contrast treated,control
+   ```
 
 ---
 

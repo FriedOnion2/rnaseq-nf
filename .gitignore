@@ -34,3 +34,7 @@ bin/nextflow
 # 本地验证生成的产物（可由 scripts/make_synthetic_counts.R / deseq2.R 重新生成）
 test/counts/
 test/results/
+
+# 真实数据集产物（可由 scripts/make_airway_counts.R + deseq2.R 生成）
+data/airway_counts/
+data/airway_results/

@@ -15,7 +15,7 @@ if (!requireNamespace("BiocManager", quietly = TRUE)) {
   install.packages("BiocManager", lib = user_lib, repos = "https://cloud.r-project.org")
 }
 BiocManager::install(
-  c("DESeq2", "SummarizedExperiment"),
+  c("DESeq2", "SummarizedExperiment", "airway"),
   lib = user_lib, ask = FALSE, update = FALSE, Ncpus = 4
 )
 install.packages(c("ggplot2", "pheatmap", "RColorBrewer", "optparse"),
