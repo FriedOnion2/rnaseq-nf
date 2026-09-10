@@ -1,0 +1,32 @@
+# Nextflow
+work/
+.nextflow/
+.nextflow.log*
+.nf-test/
+
+# 结果与中间产物 / results & intermediates
+results/
+refs/
+pipeline_info/
+
+# 数据 / data (fastq 通常较大，不入库；保留 samplesheet 模板)
+data/reads/*
+!data/reads/.gitkeep
+
+# 系统文件
+.DS_Store
+Thumbs.db
+*.swp
+
+# R
+.Rhistory
+.RData
+.Ruserdata
+
+# 日志
+*.log
+.nextflow.log*
+
+# 附带的 Nextflow 可执行 JAR（42MB，不入库；用 scripts/install_nextflow.sh 获取）
+bin/nextflow
+!bin/nextflow.*

@@ -1,0 +1,2 @@
+# 此目录存放分析用的 FASTQ 文件（通常较大，已加入 .gitignore，不入库）
+# Put your sequencing FASTQ files here (git-ignored by default).
