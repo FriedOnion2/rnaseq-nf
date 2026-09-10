@@ -1,0 +1,4 @@
+chr21	test	gene	1	500	.	+	.	gene_id "chr21_gene1"; gene_name "GENE1";
+chr21	test	exon	1	500	.	+	.	gene_id "chr21_gene1";
+chr21	test	gene	600	1100	.	-	.	gene_id "chr21_gene2"; gene_name "GENE2";
+chr21	test	exon	600	1100	.	-	.	gene_id "chr21_gene2";

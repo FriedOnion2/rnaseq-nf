@@ -27,6 +27,12 @@ process STAR_INDEX {
         --sjdbOverhang 99 \\
         --genomeSAindexNbases 12
     """
+
+    stub:
+    """
+    mkdir -p star_index
+    touch star_index/SA star_index/Genome
+    """
 }
 
 // ---- STAR 比对 / Alignment ----
@@ -61,5 +67,11 @@ process STAR_ALIGN {
         --quantMode TranscriptomeSAM GeneCounts \\
         --outFileNamePrefix ${sample_id}. \\
         --outReadsUnmapped Fastx
+    """
+
+    stub:
+    """
+    touch ${sample_id}.Aligned.sortedByCoord.out.bam
+    touch ${sample_id}_Log.final.out
     """
 }

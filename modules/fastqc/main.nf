@@ -22,4 +22,9 @@ process FASTQC {
         --threads ${task.cpus} \\
         ${reads1}${reads2 ? " ${reads2}" : ''}
     """
+
+    stub:
+    """
+    touch ${sample_id}_fastqc.html ${sample_id}_fastqc.zip
+    """
 }

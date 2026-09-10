@@ -11,6 +11,7 @@ process FEATURECOUNTS {
     input:
     tuple val(sample_id), path(bam), path(gtf)
     val   stranded
+    val   paired
 
     output:
     tuple val(sample_id), path("*_counts.txt"), emit: counts_raw
@@ -21,6 +22,7 @@ process FEATURECOUNTS {
     def strand_flag = '0'
     if (stranded == 'yes') { strand_flag = '1' }
     else if (stranded == 'reverse') { strand_flag = '2' }
+    def pair_flag = paired ? '-p --countReadPairs' : ''
     """
     featureCounts \\
         -a ${gtf} \\
@@ -28,9 +30,14 @@ process FEATURECOUNTS {
         -t exon \\
         -g gene_id \\
         -s ${strand_flag} \\
-        -p \\
-        --countReadPairs \\
+        ${pair_flag} \\
         -T ${task.cpus} \\
         ${bam}
+    """
+
+    stub:
+    """
+    touch ${sample_id}_counts.txt
+    touch ${sample_id}_counts.txt.summary
     """
 }

@@ -1,0 +1,5 @@
+sample,condition,fastq_1,fastq_2
+control_rep1,control,test/reads/control_rep1_R1.fastq.gz,test/reads/control_rep1_R2.fastq.gz
+control_rep2,control,test/reads/control_rep2_R1.fastq.gz,test/reads/control_rep2_R2.fastq.gz
+treat_rep1,treat,test/reads/treat_rep1_R1.fastq.gz,test/reads/treat_rep1_R2.fastq.gz
+treat_rep2,treat,test/reads/treat_rep2_R1.fastq.gz,test/reads/treat_rep2_R2.fastq.gz

@@ -1,22 +1,23 @@
 // =============================================================================
 //  DESeq2 模块 — 差异表达分析 / Differential expression analysis (R/DESeq2)
 //
-//  使用本地构建的镜像（modules/deseq2/Dockerfile），内含 deseq2.R 脚本。
-//  输入为各样本 featureCounts 输出；脚本内部自动合并为 raw-count 矩阵并按
-//  样本名前缀（<condition>_rep<N>）解析分组，再执行 DESeq2 与可视化。
+//  使用公开的 Bioconductor DESeq2 镜像；本地 deseq2.R 脚本被自动整理到
+//  工作目录并在容器内运行。输入为各样本 featureCounts 输出；脚本内部自动
+//  合并为 raw-count 矩阵并按样本名前缀（<condition>_rep<N>）解析分组。
 //
-//  构建镜像: docker build -f modules/deseq2/Dockerfile -t rnaseq-nf/deseq2:1.0 .
+//  无需自行构建镜像。
 // =============================================================================
 
 process DESEQ2 {
+    tag "deseq2"
     label 'process_low'
-    publishDir "${params.outdir}/deseq2", mode: 'copy'
 
-    container 'rnaseq-nf/deseq2:1.0'
+    container 'quay.io/biocontainers/bioconductor-deseq2:1.42.0--r43hdfd78af_0'
 
     input:
-    path counts_files   // 各样本 *counts.txt（featureCounts 输出，含文件头）
+    path counts_files   // 各样本 *counts.txt（featureCounts 输出）
     val  contrast       // "A,B"（A vs B）
+    path rscript        // bin/deseq2.R
 
     output:
     path "deseq2_results.csv",     emit: results
@@ -28,9 +29,14 @@ process DESEQ2 {
 
     script:
     """
-    Rscript /opt/deseq2.R \\
+    Rscript ${rscript} \\
         --outdir . \\
         --counts . \\
-        --contrast ${contrast} 2>&1 | tee deseq2.Rout
+        --contrast "${contrast}" 2>&1 | tee deseq2.Rout
+    """
+
+    stub:
+    """
+    touch deseq2_results.csv deseq2_significant.csv volcano.pdf ma_plot.pdf heatmap_top50.pdf
     """
 }

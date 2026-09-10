@@ -15,22 +15,18 @@ process TRIMGALORE {
     val   single_end
 
     output:
-    tuple val(sample_id), path("*val*.fq.gz"), path("*_2_val*.fq.gz"), emit: reads
+    tuple val(sample_id), path("*_val_1.fq.gz"), path("*_val_2.fq.gz"), emit: reads
     tuple val(sample_id), path("*_trimming_report.txt"), emit: reports
     path "*_trimming_report.txt", emit: report_raw
-    path "*.fq.gz", emit: fastq
 
     script:
-    def pe = single_end ? '' : '--paired'
-    def fq2 = (!single_end && reads2) ? "${reads2}" : ''
     if (single_end) {
         """
         trim_galore \\
             --cores ${task.cpus} \\
             --length ${min_len} \\
             --gzip \\
-            --fastqc \\
-            -a file:${adapter_file} \\
+            --adapter fasta:${adapter_file} \\
             ${reads1}
         """
     } else {
@@ -39,11 +35,18 @@ process TRIMGALORE {
             --cores ${task.cpus} \\
             --length ${min_len} \\
             --gzip \\
-            --fastqc \\
             --paired \\
-            -a file:${adapter_file} \\
-            -a2 file:${adapter_file} \\
-            ${reads1} ${fq2}
+            --retain_unpaired \\
+            --adapter AGATCGGAAGAGC \\
+            --adapter2 AGATCGGAAGAGC \\
+            ${reads1} ${reads2}
         """
     }
+
+    stub:
+    """
+    touch ${sample_id}_val_1.fq.gz
+    touch ${sample_id}_val_2.fq.gz
+    touch ${sample_id}_R1_trimming_report.txt
+    """
 }

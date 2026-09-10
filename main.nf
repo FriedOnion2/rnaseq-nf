@@ -97,14 +97,16 @@ workflow {
     def gtf_ch = ref_ch.map { fa, gtf -> gtf }
     FEATURECOUNTS(
         STAR_ALIGN.out.bam.combine(gtf_ch),
-        params.stranded
+        params.stranded,
+        !params.single_end
     )
 
     // ---- 7. 差异表达分析 / Differential expression ----
-    // 收集全部 counts 文件 + 对比参数
+    // 收集全部 counts 文件 + 对比参数 + R 脚本
     DESEQ2(
         FEATURECOUNTS.out.counts.collect(),
-        params.contrast
+        params.contrast,
+        file("${projectDir}/bin/deseq2.R", checkIfExists: true)
     )
 
     // ---- 8. 比对后质控 / Post-alignment QC ----

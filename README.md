@@ -92,11 +92,24 @@ flowchart LR
 |---|---|---|
 | Nextflow | ≥ 23.04 | 本仓库已附带 `bin/nextflow` |
 | Docker | 20.10+ | 需可正常 `docker run hello-world` |
-| Java | 11–21 | Nextflow 运行时需要（Docker 版 Nextflow 可免） |
+| Java | 11–21 | Nextflow 运行时需要 |
+| **Linux / WSL2** | — | **必须**：Nextflow 与 Docker Linux 引擎均需在 Linux 环境运行 |
 | 磁盘 Disk | ≥ 10 GB | 完整参考基因组需更多 |
 
-> 本项目所有分析工具均来自 Docker 镜像，**无需**在本机安装 STAR/DESeq2 等，
-> 唯一需要本地装的是 Docker 与 Nextflow。
+> 本项目所有分析工具均来自 Docker 镜像，**无需**在本机安装 STAR/DESeq2 等。
+>
+> ⚠️ **Windows 用户必读**：Nextflow 与 Docker 的 Linux 容器后端都依赖 Linux 环境。
+> Nextflow 本身**无法在原生 Windows 上运行**（会报 `Unknown signal: HUP`）。
+> 请先装好 **WSL2**，所有命令都在 WSL2 终端里执行：
+>
+> ```powershell
+> # 管理员 PowerShell 执行一次（会要求重启）
+> wsl --install --no-distribution
+> wsl --set-default-version 2
+> # 重启后进入 WSL2，安装 Docker Desktop 并启用 WSL2 后端，然后在 WSL2 里运行本流水线
+> ```
+>
+> 详见 [`scripts/setup_windows.ps1`](scripts/setup_windows.ps1)。
 
 ---
 

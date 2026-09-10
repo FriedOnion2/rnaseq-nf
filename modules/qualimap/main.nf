@@ -24,4 +24,10 @@ process QUALIMAP {
         -outformat HTML \\
         --java-mem-size=4G
     """
+
+    stub:
+    """
+    mkdir -p ${sample_id}_qualimap
+    touch ${sample_id}_qualimap/qualimapReport.html
+    """
 }
