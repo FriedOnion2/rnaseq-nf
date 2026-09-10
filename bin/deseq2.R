@@ -51,7 +51,22 @@ col_data <- data.frame(
   row.names = colnames(cts),
   stringsAsFactors = FALSE
 )
-col_data$condition <- factor(col_data$condition)
+
+# 解析对比：--contrast "A,B" 表示 A(处理) vs B(对照)
+# 将 condition 因子水平设为 [B, A]，使 reference = B，结果即为 A/B 的 log2FC
+groups <- c("", "")
+if (!is.null(opts$contrast)) {
+  gr <- strsplit(opts$contrast, ",")[[1]]
+  gr <- trimws(gr)
+  if (length(gr) == 2) groups <- gr
+}
+if (nchar(groups[1]) > 0) {
+  # 保证 levels 顺序为 [对照, 处理]
+  lv <- unique(c(groups[2], groups[1], setdiff(unique(col_data$condition), groups)))
+  col_data$condition <- factor(col_data$condition, levels = lv)
+} else {
+  col_data$condition <- factor(col_data$condition)
+}
 
 cat("实验设计 / design matrix:\n"); print(col_data)
 
@@ -66,14 +81,14 @@ dds <- dds[keep, ]
 
 # ---- 差异表达分析 ----
 dds <- DESeq(dds)
-res <- results(dds, alpha = 0.05)
 
-# 若指定了 contrast，据此命名输出
-if (!is.null(opts$contrast)) {
-  groups <- strsplit(opts$contrast, ",")[[1]]
-  if (length(groups) == 2) {
-    cat("对比 contrast:", groups[1], "vs", groups[2], "\n")
-  }
+# 显式指定对比：处理组 vs 对照组
+contrast_vec <- c("condition", groups[1], groups[2])
+if (nchar(groups[1]) > 0) {
+  cat("对比 contrast:", groups[1], "vs", groups[2], "\n")
+  res <- results(dds, contrast = contrast_vec, alpha = 0.05)
+} else {
+  res <- results(dds, alpha = 0.05)
 }
 
 res_df <- as.data.frame(res)
@@ -117,15 +132,17 @@ p_ma <- ggplot(res_df[!is.na(res_df$padj), ], aes(x = log10(baseMean), y = log2F
 ggsave(file.path(opts$outdir, "ma_plot.pdf"), p_ma, width = 7, height = 6)
 
 # 显著基因热图 / heatmap of top DEGs
+# pheatmap 返回的是绘制的 list 对象而非 ggplot，需用 pdf()/dev.off() 保存
 if (nrow(sig) > 0) {
   top <- head(sig, 50)
   vsd <- vst(dds, blind = FALSE)
   mat <- assay(vsd)[top$gene_id, , drop = FALSE]
   mat <- mat - rowMeans(mat)
-  p_heatmap <- pheatmap(mat, cluster_cols = TRUE, cluster_rows = TRUE,
-                         color = colorRampPalette(rev(brewer.pal(9, "RdBu")))(100),
-                         show_rownames = TRUE, main = "Top 50 significant DEGs")
-  ggsave(file.path(opts$outdir, "heatmap_top50.pdf"), p_heatmap, width = 8, height = 10)
+  pdf(file.path(opts$outdir, "heatmap_top50.pdf"), width = 8, height = 10)
+  pheatmap(mat, cluster_cols = TRUE, cluster_rows = TRUE,
+           color = colorRampPalette(rev(brewer.pal(9, "RdBu")))(100),
+           show_rownames = TRUE, main = "Top 50 significant DEGs")
+  dev.off()
 }
 
 cat("DESeq2 分析完成。输出文件位于:", normalizePath(opts$outdir), "\n")

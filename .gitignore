@@ -30,3 +30,7 @@ Thumbs.db
 # 附带的 Nextflow 可执行 JAR（42MB，不入库；用 scripts/install_nextflow.sh 获取）
 bin/nextflow
 !bin/nextflow.*
+
+# 本地验证生成的产物（可由 scripts/make_synthetic_counts.R / deseq2.R 重新生成）
+test/counts/
+test/results/
