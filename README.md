@@ -28,6 +28,7 @@ Nextflow + Docker 流水线，全程容器化，任何机器上跑出来的结�
 - [结果解读 Interpreting results](#-结果解读-interpreting-results)
 - [复现性 Reproducibility](#-复现性-reproducibility)
 - [验证 Validation](#-验证-validation)
+- [🎓 手把手教学 Tutorial](#-手把手教学-tutorial)
 - [目录结构 Repository layout](#-目录结构-repository-layout)
 - [常见问题 Troubleshooting](#-常见问题-troubleshooting)
 - [许可 License](#-许可-license)
@@ -306,6 +307,21 @@ nextflow run main.nf --genome_fasta refs/genome.fa --gtf refs/genes.gtf \
    Rscript scripts/make_airway_counts.R data/airway_counts # 真实公开数据
    Rscript bin/deseq2.R --outdir data/airway_results --counts data/airway_counts --contrast treated,control
    ```
+
+---
+
+## 🎓 手把手教学 Tutorial
+
+既想跑通、又想**真正看懂**每一步在干什么？读这份从零开始的中文教程：
+
+- **[`docs/tutorial_cn.md`](docs/tutorial_cn.md)** — 从"为什么要这样做"讲起，覆盖：
+  - 第 0–1 课：整体地图 + 生物学问题
+  - 第 2–4 课：环境准备 + 准备数据 + 一条命令跑通
+  - 第 5 课：读懂每一步输出
+  - 第 6 课：读懂 `main.nf` 与各模块代码
+  - 第 7 课：DESeq2 统计原理（归一化 / 负二项 / 多重检验）
+  - 第 8 课：换成你自己的数据
+  - 第 9 课：复现性与常见坑
 
 ---
 
