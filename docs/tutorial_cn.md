@@ -296,6 +296,105 @@ process STAR_ALIGN {
 每个模块固定一个镜像 + 版本号（如 `star:2.7.11b--h5ca1c30_4`），保证
 **任何人、任何机器、任何时间**跑出来的结果一致。这就是"可复现"的核心。
 
+### 6.4 完整逐行注释 `main.nf`
+
+下面把本仓库真实的 `main.nf` 完整拆开，一句一句讲。读完这一节，你就真正"看懂"了流水线。
+
+```groovy
+nextflow.enable.dsl = 2
+// ↑ 声明用 DSL2 语法（现代 Nextflow 标准）
+
+params.reads    = "${projectDir}/data/samplesheet.csv"
+params.contrast = null          // 例如 "treated,control"
+params.refdir   = "${launchDir}/refs"
+// ↑ params = 可被命令行 --xxx 覆盖的全局参数
+
+include { FASTQC }      from './modules/fastqc/main'
+include { STAR_INDEX; STAR_ALIGN } from './modules/star/main'
+// ↑ include = 把各模块"注册"进来。STAR 模块里同时有 STAR_INDEX 和 STAR_ALIGN 两个 process
+
+workflow {
+    // ---- ① 读样本表 → 通道 ----
+    def raw_samples = Channel
+        .fromPath(params.reads, checkIfExists: true)   // 找到 CSV 文件
+        .splitCsv(header: true, sep: ',', strip: true) // 按行解析成记录
+        .map { row -> [row.sample, row.condition, row.fastq_1, row.fastq_2] }
+    // ↑ 每一行 CSV 变成一个 [样本名, 条件, R1, R2] 四元组，流进通道
+
+    def samples = raw_samples.map { id, cond, fq1, fq2 ->
+        [id, cond, file(fq1), fq2 ? file(fq2) : null]
+    }
+    // ↑ file() 把字符串路径变成"文件对象"，Nextflow 才会自动追踪/传递真实文件
+
+    // ---- ② 原始质控 ----
+    FASTQC(samples.map { id, cond, fq1, fq2 -> [id, fq1, fq2] })
+    // ↑ map 把 [id, cond, fq1, fq2] 改成 [id, fq1, fq2]（FastQC 不需要 cond）
+
+    // ---- ③ 修剪 ----
+    TRIMGALORE(
+        samples.map { id, cond, fq1, fq2 -> [id, fq1, fq2] },
+        params.adapter_file, params.min_trim_len, params.single_end
+    )
+
+    // ---- ④ 建 STAR 索引（只跑一次）----
+    def genome_fa = params.genome_fasta ?: file("${params.refdir}/genome.fa")
+    def annot_gtf = params.gtf         ?: file("${params.refdir}/genes.gtf")
+    def ref_ch = Channel.value([genome_fa, annot_gtf])
+    // ↑ Channel.value = "值通道"：内容固定只有一个，供所有样本复用
+    STAR_INDEX(ref_ch)
+
+    // ---- ⑤ 比对 ----
+    STAR_ALIGN(
+        TRIMGALORE.out.reads.combine(STAR_INDEX.out.index),
+        params.star_threads
+    )
+    // ↑ combine：把"6 个样本的 reads" × "1 个索引" → 6 个配对。
+    //   这是关键技巧：单值索引被"广播"到每个样本。
+
+    // ---- ⑥ 定量 ----
+    def gtf_ch = ref_ch.map { fa, gtf -> gtf }   // 从值通道里只取 GTF
+    FEATURECOUNTS(
+        STAR_ALIGN.out.bam.combine(gtf_ch),
+        params.stranded, !params.single_end
+    )
+
+    // ---- ⑦ 差异表达 ----
+    DESEQ2(
+        FEATURECOUNTS.out.counts.collect(),   // collect：把 6 个 counts 聚成一个列表
+        params.contrast,                       // "treated,control"
+        file("${projectDir}/bin/deseq2.R")     // R 脚本
+    )
+    // ↑ 注意 DESeq2 和前面不同：它要"所有样本一起"分析，所以用 collect()
+
+    // ---- ⑧ 比对后质控 ----
+    QUALIMAP(STAR_ALIGN.out.bam.combine(gtf_ch))
+
+    // ---- ⑨ 汇总质控 ----
+    MULTIQC(
+        FASTQC.out.zip.map       { id, html, zip -> zip }.collect(),
+        TRIMGALORE.out.reports.map { id, r -> r }.collect(),
+        STAR_ALIGN.out.logs.map   { id, log -> log }.collect(),
+        QUALIMAP.out.reports.map  { id, r -> r }.collect()
+    )
+    // ↑ 每个上游输出都是 tuple(id, path)，这里 map 只留 path，再 collect 汇总
+}
+```
+
+**三个贯穿全程的 Nextflow 概念：**
+
+| 概念 | 作用 | 本流水线例子 |
+|---|---|---|
+| **Channel（通道）** | 数据在模块间流动的管道 | `samples`、`ref_ch` |
+| **`.map{}`** | 逐个变换通道里的元素 | `[id,cond,fq1,fq2]` → `[id,fq1,fq2]` |
+| **`.combine()`** | 两个通道做笛卡尔配对 | 6 样本 × 1 索引 |
+| **`.collect()`** | 把流里所有元素攒成一个列表 | 6 个 counts → 1 个列表给 DESeq2 |
+
+> **为什么 `combine` 和 `collect` 是两个不同动作？**
+> - `combine`：每个样本要和索引/GTF **一对一**配对（保持 6 份独立）
+> - `collect`：DESeq2 需要**一次性拿到全部 6 个 counts**（合并分析）
+>
+> 理解这两个的区别，就理解了 Nextflow 数据流的精髓。
+
 ---
 
 ## 第 7 课：统计原理——DESeq2 为什么这样做
