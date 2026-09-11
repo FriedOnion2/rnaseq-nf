@@ -1,16 +1,7 @@
-# =============================================================================
-#  样本表 samplesheet.csv — 定义本次分析的样本与实验设计
-#  列：sample      样本名（唯一）
-#      condition   实验条件（用于 DESeq2 分组对比）
-#      fastq_1     双端测序 read1 路径（相对路径相对于本文件所在目录或绝对路径）
-#      fastq_2     双端测序 read2 路径（单端测序留空）
-#
-#  Columns: sample / condition / fastq_1 / fastq_2
-# =============================================================================
 sample,condition,fastq_1,fastq_2
 control_rep1,control,data/reads/control_rep1_R1.fastq.gz,data/reads/control_rep1_R2.fastq.gz
 control_rep2,control,data/reads/control_rep2_R1.fastq.gz,data/reads/control_rep2_R2.fastq.gz
 control_rep3,control,data/reads/control_rep3_R1.fastq.gz,data/reads/control_rep3_R2.fastq.gz
-treat_rep1,treat,data/reads/treat_rep1_R1.fastq.gz,data/reads/treat_rep1_R2.fastq.gz
-treat_rep2,treat,data/reads/treat_rep2_R1.fastq.gz,data/reads/treat_rep2_R2.fastq.gz
-treat_rep3,treat,data/reads/treat_rep3_R1.fastq.gz,data/reads/treat_rep3_R2.fastq.gz
+treated_rep1,treated,data/reads/treated_rep1_R1.fastq.gz,data/reads/treated_rep1_R2.fastq.gz
+treated_rep2,treated,data/reads/treated_rep2_R1.fastq.gz,data/reads/treated_rep2_R2.fastq.gz
+treated_rep3,treated,data/reads/treated_rep3_R1.fastq.gz,data/reads/treated_rep3_R2.fastq.gz

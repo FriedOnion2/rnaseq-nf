@@ -6,7 +6,8 @@ process FASTQC {
     tag "$sample_id"
     label 'process_low'
 
-    container 'biocontainers/fastqc:v0.12.1_cv1'
+    container 'staphb/fastqc:0.12.1'
+    publishDir "${params.outdir}/fastqc", mode: 'copy'
 
     input:
     tuple val(sample_id), path(reads1), path(reads2)

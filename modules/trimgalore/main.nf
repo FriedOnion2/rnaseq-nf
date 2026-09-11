@@ -6,7 +6,8 @@ process TRIMGALORE {
     tag "$sample_id"
     label 'process_medium'
 
-    container 'quay.io/biocontainers/trim-galore:0.6.10--hdfd78af_4'
+    container 'quay.io/biocontainers/trim-galore:0.6.10--hdfd78af_2'
+    publishDir "${params.outdir}/trimgalore", mode: 'copy'
 
     input:
     tuple val(sample_id), path(reads1), path(reads2)

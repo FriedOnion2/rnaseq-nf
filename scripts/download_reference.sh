@@ -15,10 +15,13 @@ GTF_URL="https://ftp.ensembl.org/pub/release-110/gtf/homo_sapiens/Homo_sapiens.G
 MINI_FA="Homo_sapiens.GRCh38.dna.chromosome.21.fa.gz"
 FULL_FA="Homo_sapiens.GRCh38.dna.primary_assembly.fa.gz"
 
-OUTDIR="${1:-refs}"
+OUTDIR="refs"
 MINI=false
 for arg in "$@"; do
-  [[ "$arg" == "--mini" ]] && MINI=true
+  case "$arg" in
+    --mini) MINI=true ;;
+    -o|--outdir) shift; OUTDIR="${1:-refs}" ;;
+  esac
 done
 
 mkdir -p "$OUTDIR"

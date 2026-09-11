@@ -6,6 +6,9 @@ process MULTIQC {
     label 'process_low'
 
     container 'multiqc/multiqc:v1.25.1'
+    // MultiQC 镜像默认以 UID 1000 非 root 运行，无法写 root 所有的 work 目录
+    containerOptions '--user 0:0'
+    publishDir "${params.outdir}/multiqc", mode: 'copy'
 
     input:
     path fastqc_zips
@@ -19,7 +22,7 @@ process MULTIQC {
 
     script:
     """
-    multiqc . --outdir multiqc_data --filename multiqc_report
+    multiqc .
     """
 
     stub:

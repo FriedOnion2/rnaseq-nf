@@ -7,6 +7,7 @@ process QUALIMAP {
     label 'process_medium'
 
     container 'quay.io/biocontainers/qualimap:2.3--hdfd78af_0'
+    publishDir "${params.outdir}/qualimap", mode: 'copy'
 
     input:
     tuple val(sample_id), path(bam), path(gtf)

@@ -97,7 +97,7 @@ flowchart LR
 
 | 依赖 Dependency | 版本 Version | 说明 Notes |
 |---|---|---|
-| Nextflow | ≥ 23.04 | 本仓库已附带 `bin/nextflow` |
+| Nextflow | 24.x（内置 Docker 执行器） | 本仓库已附带 `bin/nextflow`（24.10.8） |
 | Docker | 20.10+ | 需可正常 `docker run hello-world` |
 | Java | 11–21 | Nextflow 运行时需要 |
 | **Linux / WSL2** | — | **必须**：Nextflow 与 Docker Linux 引擎均需在 Linux 环境运行 |
@@ -113,10 +113,22 @@ flowchart LR
 > # 管理员 PowerShell 执行一次（会要求重启）
 > wsl --install --no-distribution
 > wsl --set-default-version 2
-> # 重启后进入 WSL2，安装 Docker Desktop 并启用 WSL2 后端，然后在 WSL2 里运行本流水线
+> ```
+>
+> 重启后进入 WSL2，在其中安装 **原生 Docker Engine**（`apt-get install docker.io`，
+> 而非依赖 Docker Desktop 的 WSL 集成，后者在无 GUI 时不易配置），然后：
+>
+> ```bash
+> # WSL2 内：启动 dockerd 并跑流水线
+> sudo dockerd &                       # 启动 Docker 守护进程
+> bash scripts/run_pipeline.sh         # 一键运行（已内置 -work-dir 处理）
 > ```
 >
 > 详见 [`scripts/setup_windows.ps1`](scripts/setup_windows.ps1)。
+>
+> ⚠️ **注意**：本项目用 Nextflow **24.10.8**（内建 Docker 执行器）。
+> Nextflow 26.x 起把 docker/singularity 执行器拆成了外部插件（`-dist`/`-one.jar`
+> 发行版不含），`executor = 'docker'` 会报 `Unknown executor name: docker`。
 
 ---
 
@@ -146,16 +158,29 @@ treat_rep1,treat,data/reads/treat_rep1_R1.fastq.gz,data/reads/treat_rep1_R2.fast
 
 ### 3. 运行流水线 / Run the pipeline
 
+> **便捷方式**：仓库已附一键启动脚本 `scripts/run_pipeline.sh`，它会自动确保
+> Docker 就绪、把 work 目录放到 Linux 原生分区（解决 STAR 的 FIFO 需求），然后跑完整流程：
+>
+> ```bash
+> bash scripts/run_pipeline.sh
+> ```
+
+手动运行（等价命令）：
+
 ```bash
 nextflow run main.nf \
   --genome_fasta refs/genome.fa \
   --gtf refs/genes.gtf \
-  --contrast treat,control \
+  --contrast treated,control \
   -profile docker \
+  -work-dir /nf-work \
   -resume
 ```
 
-> 本仓库已附带 Nextflow，也可用：`java -jar bin/nextflow run main.nf ...`
+> ⚠️ **`-work-dir` 必须放在 Linux 原生 ext4 分区**（如 `/nf-work`）。
+> STAR 需要创建 FIFO 命名管道，而 Windows 的 `/mnt/d`（NTFS）不支持 FIFO，
+> 放在那里会报 `could not create FIFO file`。同理该目录不能是 `/root`（700 权限，
+> 会挡住以非 root 运行的 MultiQC 容器）。
 
 运行结束后，结果在 `results/`：
 
@@ -164,14 +189,20 @@ results/
 ├── pipeline_info/
 │   ├── execution_report.html
 │   ├── execution_timeline.html
-│   ├── pipeline_dag.svg
 │   └── execution_trace.txt
-├── multiqc_report.html
-├── deseq2_results.csv         # 全部基因差异表达结果
-├── deseq2_significant.csv     # 显著 DEG（padj<0.05 且 |log2FC|≥1）
-├── volcano.pdf                # 火山图
-├── ma_plot.pdf                # MA 图
-└── heatmap_top50.pdf          # Top50 显著 DEG 热图
+├── deseq2/
+│   ├── deseq2_results.csv        # 全部基因差异表达结果
+│   ├── deseq2_significant.csv    # 显著 DEG（padj<0.05 且 |log2FC|≥1）
+│   ├── volcano.pdf               # 火山图
+│   ├── ma_plot.pdf               # MA 图
+│   └── heatmap_top50.pdf         # Top50 显著 DEG 热图
+├── fastqc/                       # 每样本 FastQC 报告
+├── trimgalore/                   # 修剪后 reads + 报告
+├── star/                         # 比对 BAM + 比对率日志
+├── featurecounts/                # 基因 counts 矩阵
+├── qualimap/                     # 比对后质控报告
+└── multiqc/
+    └── multiqc_report.html       # 全流程质控汇总
 ```
 
 ---
@@ -297,8 +328,11 @@ rnaseq-nf/
 │   └── deseq2.R               # DESeq2 分析脚本
 ├── assets/adapters.fa         # 接头序列库
 ├── scripts/
-│   ├── download_reference.sh  # 参考下载
-│   └── download_demo_data.sh  # 演示数据下载
+│   ├── download_reference.sh  # 参考下载（含 --mini 模式）
+│   ├── download_demo_data.sh  # 演示数据下载（GSE52778 真实数据）
+│   ├── run_pipeline.sh        # 一键运行（自动处理 WSL/Docker/FIFO）
+│   ├── verify_images.sh       # 校验各镜像 tag 是否有效
+│   └── verify_fastq.sh        # 校验 FASTQ 完整性与 read 数
 ├── data/
 │   ├── samplesheet.csv        # 样本表
 │   └── reads/                 # FASTQ 目录
@@ -316,6 +350,12 @@ rnaseq-nf/
 | `STAR` 内存不足 | 调高 `nextflow.config` 中 `process_high` 的 `memory` |
 | `-resume` 不生效 | 确保工作目录 `work/` 未被删除、输入文件哈希未变 |
 | 完整参考基因组下载失败 | 改用 `--mini` 模式（chr21）先跑通流程 |
+| `could not create FIFO file`（STAR） | work 目录在 NTFS（`/mnt/d`）；改用 `-work-dir /nf-work` 放 Linux ext4 分区 |
+| `Unknown executor name: docker` | 用了 Nextflow 26.x（docker 执行器已拆为插件）；换回 24.x |
+| FastQC 卡死 `No fonts found` | biocontainers/fastqc 镜像缺 Java 字体；改用 `staphb/fastqc` |
+| MultiQC `.command.run: Permission denied` | work 目录在 `/root`（700 权限）挡了非 root 容器；放 `/nf-work` 并 `chmod 777` |
+| `pipeline_info` 路径为 `null/` | `params.outdir` 未在 `nextflow.config` 定义；在 config 顶层 `params` 里补 `outdir` |
+| 容器镜像 tag 报 `not found` | biocontainers 镜像 tag 会随重建失效；用 `docker manifest inspect` 找当前有效 tag |
 
 ---
 

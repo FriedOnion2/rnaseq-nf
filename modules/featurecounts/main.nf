@@ -6,7 +6,8 @@ process FEATURECOUNTS {
     tag "$sample_id"
     label 'process_medium'
 
-    container 'quay.io/subread_sourceforge/subread:2.0.6'
+    container 'quay.io/biocontainers/subread:2.0.6--h577a1d6_3'
+    publishDir "${params.outdir}/featurecounts", mode: 'copy'
 
     input:
     tuple val(sample_id), path(bam), path(gtf)

@@ -25,13 +25,6 @@ params.star_threads   = 8
 params.refdir         = "${launchDir}/refs"   // 存放下载好的参考文件
 params.skip_rseqc      = false
 
-// 参考文件解析：优先直接指定，否则到 refdir 里自动查找
-if (params.genome_fasta && params.gtf) {
-    // 显式指定
-    println "Using explicit genome_fasta + gtf."
-}
-// (参考文件下载由 assets/build_refs.sh 或 Nextflow 自动检测生成)
-
 include { FASTQC }                    from './modules/fastqc/main'
 include { MULTIQC }                   from './modules/multiqc/main'
 include { TRIMGALORE }                from './modules/trimgalore/main'
@@ -44,7 +37,7 @@ include { QUALIMAP }                  from './modules/qualimap/main'
 workflow {
 
     // ---- 1. 读入样本表并解析通道 / Read samplesheet, build channels ----
-    Channel
+    def raw_samples = Channel
         .fromPath(params.reads, checkIfExists: true)
         .splitCsv(header: true, sep: ',', strip: true)
         .map { row ->
@@ -54,11 +47,9 @@ workflow {
             def fastq2 = row.fastq_2 ?: null
             [id, cond, fastq1, fastq2]
         }
-        .set { raw_samples }
 
-    raw_samples
+    def samples = raw_samples
         .map { id, cond, fq1, fq2 -> [id, cond, file(fq1, checkIfExists: true), fq2 ? file(fq2, checkIfExists: true) : null] }
-        .set { samples }
 
     // ---- 2. 原始数据质控 / Raw QC ----
     FASTQC(samples.map { id, cond, fq1, fq2 -> [id, fq1, fq2] })
@@ -81,7 +72,7 @@ workflow {
     if (!annot_gtf) {
         annot_gtf = file("${params.refdir}/genes.gtf", checkIfExists: true)
     }
-    Channel.value([genome_fa, annot_gtf]).set { ref_ch }
+    def ref_ch = Channel.value([genome_fa, annot_gtf])
 
     STAR_INDEX(ref_ch)
 
@@ -115,31 +106,14 @@ workflow {
     )
 
     // ---- 9. 汇总质控报告 / Aggregate QC report ----
+    // 各上游输出为 tuple(sample_id, path)，这里提取纯 path 再汇总
     MULTIQC(
-        FASTQC.out.zip.collect(),
-        TRIMGALORE.out.reports.collect(),
-        STAR_ALIGN.out.logs.collect(),
-        QUALIMAP.out.reports.collect()
+        FASTQC.out.zip.map          { id, html, zip -> zip }.collect(),
+        TRIMGALORE.out.reports.map  { id, report -> report }.collect(),
+        STAR_ALIGN.out.logs.map     { id, log -> log }.collect(),
+        QUALIMAP.out.reports.map    { id, report -> report }.collect()
     )
 
     // ---- 发布结果 / Publish ----
     MULTIQC.out.report | view
-}
-
-
-// -------------------------------------------------------------------------
-// 事件记录（便于复现审计）/ Workflow signature for reproducibility tracking
-// -------------------------------------------------------------------------
-workflow.onComplete {
-    def info = "rnaseq-nf v1.0.0\n"
-    info    += "nextflow ${workflow.nextflow.version} | ${workflow.nextflow.build}\n"
-    info    += "runName  : ${workflow.runName}\n"
-    info    += "duration : ${workflow.duration}\n"
-    info    += "complete : done\n"
-    info    += "summary file: ${params.outdir}/pipeline_info/multiqc_report.html\n"
-    log.info info
-}
-
-workflow.onError {
-    log.error "Pipeline failed. Review the trace: ${workflow.trace}"
 }

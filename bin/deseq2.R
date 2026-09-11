@@ -10,18 +10,20 @@
 suppressPackageStartupMessages({
   library(DESeq2)
   library(ggplot2)
-  library(pheatmap)
-  library(RColorBrewer)
-  library(optparse)
 })
 
-# ---- 命令行参数 ----
-option_list <- list(
-  make_option("--outdir",   type="character", default=".",  help="输出目录"),
-  make_option("--contrast", type="character", default=NULL,  help="对比: A,B（A vs B）"),
-  make_option("--counts",   type="character", default=".",  help="featureCounts 输出目录或文件列表")
+# ---- 命令行参数（用 base R 解析，避免依赖 optparse）----
+args <- commandArgs(trailingOnly = TRUE)
+get_arg <- function(name, default = NULL) {
+  idx <- match(paste0("--", name), args)
+  if (is.na(idx)) return(default)
+  args[idx + 1]
+}
+opts <- list(
+  outdir   = get_arg("outdir", "."),
+  contrast = get_arg("contrast", NULL),
+  counts   = get_arg("counts", ".")
 )
-opts <- parse_args(OptionParser(option_list=option_list), args=commandArgs(trailingOnly=TRUE))
 
 # ---- 读取所有样本的 raw counts ----
 count_files <- list.files(opts$counts, pattern = "_counts.txt$", full.names = TRUE)
@@ -132,16 +134,21 @@ p_ma <- ggplot(res_df[!is.na(res_df$padj), ], aes(x = log10(baseMean), y = log2F
 ggsave(file.path(opts$outdir, "ma_plot.pdf"), p_ma, width = 7, height = 6)
 
 # 显著基因热图 / heatmap of top DEGs
-# pheatmap 返回的是绘制的 list 对象而非 ggplot，需用 pdf()/dev.off() 保存
+# 使用 base R 的 heatmap()（无需 pheatmap 包），返回前 50 个显著 DEG 的样本×基因热图
 if (nrow(sig) > 0) {
   top <- head(sig, 50)
-  vsd <- vst(dds, blind = FALSE)
+  # 数据量小（基因数 < 1000）时 vst() 会因 nsub 默认值报错，改用 VST 直接变换
+  if (nrow(dds) < 1000) {
+    vsd <- varianceStabilizingTransformation(dds, blind = FALSE)
+  } else {
+    vsd <- vst(dds, blind = FALSE)
+  }
   mat <- assay(vsd)[top$gene_id, , drop = FALSE]
-  mat <- mat - rowMeans(mat)
+  mat <- mat - rowMeans(mat)   # 中心化，便于看各基因相对表达
+  pal <- colorRampPalette(c("navy", "white", "firebrick3"))(100)
   pdf(file.path(opts$outdir, "heatmap_top50.pdf"), width = 8, height = 10)
-  pheatmap(mat, cluster_cols = TRUE, cluster_rows = TRUE,
-           color = colorRampPalette(rev(brewer.pal(9, "RdBu")))(100),
-           show_rownames = TRUE, main = "Top 50 significant DEGs")
+  heatmap(mat, col = pal, scale = "none", margins = c(10, 10),
+          main = "Top 50 significant DEGs")
   dev.off()
 }
 

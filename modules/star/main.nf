@@ -8,6 +8,7 @@ process STAR_INDEX {
     label 'process_long'
 
     container 'quay.io/biocontainers/star:2.7.11b--h5ca1c30_4'
+    publishDir "${params.outdir}/star_index", mode: 'copy'
 
     input:
     tuple path(genome_fasta), path(gtf)
@@ -42,6 +43,7 @@ process STAR_ALIGN {
     label 'process_long'
 
     container 'quay.io/biocontainers/star:2.7.11b--h5ca1c30_4'
+    publishDir "${params.outdir}/star", mode: 'copy'
 
     input:
     tuple val(sample_id), path(reads1), path(reads2), path(star_index)
@@ -49,8 +51,8 @@ process STAR_ALIGN {
 
     output:
     tuple val(sample_id), path("*.Aligned.sortedByCoord.out.bam"), emit: bam
-    tuple val(sample_id), path("*_Log.final.out"), emit: logs
-    path "*_Log.final.out", emit: log_raw
+    tuple val(sample_id), path("*.Log.final.out"), emit: logs
+    path "*.Log.final.out", emit: log_raw
     path "*.Aligned.sortedByCoord.out.bam", emit: bam_raw
 
     script:
@@ -72,6 +74,6 @@ process STAR_ALIGN {
     stub:
     """
     touch ${sample_id}.Aligned.sortedByCoord.out.bam
-    touch ${sample_id}_Log.final.out
+    touch ${sample_id}.Log.final.out
     """
 }

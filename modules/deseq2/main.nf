@@ -12,7 +12,8 @@ process DESEQ2 {
     tag "deseq2"
     label 'process_low'
 
-    container 'quay.io/biocontainers/bioconductor-deseq2:1.42.0--r43hdfd78af_0'
+    container 'quay.io/biocontainers/bioconductor-deseq2:1.46.0--r44he5774e6_1'
+    publishDir "${params.outdir}/deseq2", mode: 'copy'
 
     input:
     path counts_files   // 各样本 *counts.txt（featureCounts 输出）
